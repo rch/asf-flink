@@ -18,13 +18,15 @@
 import struct
 
 from avro.io import (
-    AvroTypeException,
     BinaryDecoder,
     BinaryEncoder,
     DatumReader,
     DatumWriter,
+    validate as Validate,
+)
+from avro.errors import (
+    AvroTypeException,
     SchemaResolutionException,
-    Validate,
 )
 
 STRUCT_FLOAT = struct.Struct('>f')  # big-endian float
