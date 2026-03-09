@@ -30,6 +30,8 @@ import org.apache.flink.util.concurrent.ScheduledExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,13 +67,15 @@ public abstract class AbstractApplication implements Serializable {
 
     private final Set<JobID> jobs = new HashSet<>();
 
+    private final List<ApplicationExceptionHistoryEntry> exceptionHistory = new ArrayList<>();
+
     /**
      * List of registered application status listeners that will be notified via {@link
      * ApplicationStatusListener#notifyApplicationStatusChange} when the application state changes.
      * For example, the Dispatcher registers itself as a listener to perform operations such as
      * archiving when the application reaches a terminal state.
      */
-    private final transient List<ApplicationStatusListener> statusListeners = new ArrayList<>();
+    private transient List<ApplicationStatusListener> statusListeners = new ArrayList<>();
 
     public AbstractApplication(ApplicationID applicationId) {
         this.applicationId = checkNotNull(applicationId);
@@ -127,6 +131,15 @@ public abstract class AbstractApplication implements Serializable {
         return Collections.unmodifiableSet(jobs);
     }
 
+    public List<ApplicationExceptionHistoryEntry> getExceptionHistory() {
+        return Collections.unmodifiableList(exceptionHistory);
+    }
+
+    public void addExceptionHistoryEntry(Throwable throwable, @Nullable JobID jobId) {
+        exceptionHistory.add(
+                new ApplicationExceptionHistoryEntry(throwable, System.currentTimeMillis(), jobId));
+    }
+
     /**
      * Adds a job ID to the jobs set.
      *
@@ -146,7 +159,14 @@ public abstract class AbstractApplication implements Serializable {
      * <p>This method is not thread-safe and should not be called concurrently.
      */
     public void registerStatusListener(ApplicationStatusListener listener) {
-        statusListeners.add(listener);
+        getStatusListeners().add(listener);
+    }
+
+    private List<ApplicationStatusListener> getStatusListeners() {
+        if (statusListeners == null) {
+            statusListeners = new ArrayList<>();
+        }
+        return statusListeners;
     }
 
     // ------------------------------------------------------------------------
@@ -215,8 +235,10 @@ public abstract class AbstractApplication implements Serializable {
                 targetState);
         this.statusTimestamps[targetState.ordinal()] = System.currentTimeMillis();
         this.applicationState = targetState;
-        statusListeners.forEach(
-                listener -> listener.notifyApplicationStatusChange(applicationId, targetState));
+        getStatusListeners()
+                .forEach(
+                        listener ->
+                                listener.notifyApplicationStatusChange(applicationId, targetState));
     }
 
     private void validateTransition(ApplicationState targetState) {

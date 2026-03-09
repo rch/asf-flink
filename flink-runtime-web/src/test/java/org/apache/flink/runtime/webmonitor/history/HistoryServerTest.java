@@ -161,7 +161,7 @@ class HistoryServerTest {
             assertThat(getJobsOverview(baseUrl).getJobs()).isEmpty();
 
             for (int x = 0; x < numJobs; x++) {
-                runJob();
+                mockJobArchive(createExecutionGraphInfo(), null);
             }
             createLegacyArchive(jmDirectory.toPath(), versionLessThan14);
             waitForArchivesCreation(numJobs + numLegacyJobs);
@@ -338,7 +338,7 @@ class HistoryServerTest {
         int numExpiredJobs = cleanupExpiredJobs ? 1 : 0;
         int numJobs = 3;
         for (int x = 0; x < numJobs; x++) {
-            runJob();
+            mockJobArchive(createExecutionGraphInfo(), null);
         }
         waitForArchivesCreation(numJobs);
 
@@ -647,6 +647,9 @@ class HistoryServerTest {
                 expectedApplicationAndJobIdsToKeep.add(
                         new Tuple2<>(applicationId, new HashSet<>(jobIds)));
             }
+            // Sleep to ensure archive files have distinct timestamps. Identical timestamps can lead
+            // to non-deterministic eviction order, causing test flakiness.
+            Thread.sleep(50);
         }
 
         // one for application itself, numJobsPerApplication for jobs
@@ -716,7 +719,8 @@ class HistoryServerTest {
                                 .collect(Collectors.toList());
                 expectedApplicationAndJobIdsToKeep.add(
                         new Tuple2<>(applicationId, new HashSet<>(jobIds)));
-                // avoid executing too fast, resulting in the same creation time of archive files
+                // Sleep to ensure archive files have distinct timestamps. Identical timestamps can
+                // lead to non-deterministic eviction order, causing test flakiness.
                 Thread.sleep(50);
             }
 
@@ -922,8 +926,7 @@ class HistoryServerTest {
                         JobsOverviewHeaders.URL,
                         new MultipleJobsDetails(
                                 Collections.singleton(
-                                        JobDetails.createDetailsForJob(
-                                                executionGraphInfo.getArchivedExecutionGraph()))));
+                                        JobDetails.createDetailsForJob(executionGraphInfo))));
         FsJsonArchivist.writeArchivedJsons(
                 ArchivePathUtils.getJobArchivePath(clusterConfig, jobId, applicationId),
                 Collections.singletonList(archivedJobsOverview));
@@ -941,7 +944,8 @@ class HistoryServerTest {
                 "test-application",
                 ApplicationState.FINISHED,
                 new long[ApplicationState.values().length],
-                jobs);
+                jobs,
+                Collections.emptyList());
     }
 
     private ExecutionGraphInfo createExecutionGraphInfo() {

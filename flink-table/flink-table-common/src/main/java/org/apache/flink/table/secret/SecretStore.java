@@ -16,17 +16,18 @@
  * limitations under the License.
  */
 
-package org.apache.flink.state.table;
+package org.apache.flink.table.secret;
 
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
+import org.apache.flink.annotation.PublicEvolving;
 
-import com.example.state.writer.job.schema.avro.AvroRecord;
-
-/** {@link SavepointTypeInformationFactory} for generic avro record. */
-public class GenericAvroSavepointTypeInformationFactory implements SavepointTypeInformationFactory {
-    @Override
-    public TypeInformation<?> getTypeInformation() {
-        return new GenericRecordAvroTypeInfo(AvroRecord.getClassSchema());
-    }
-}
+/**
+ * Base marker interface for secret store implementations.
+ *
+ * <p>This interface serves as the common base for both {@link ReadableSecretStore} and {@link
+ * WritableSecretStore}, allowing for flexible secret management implementations.
+ *
+ * <p>Secret stores are used to manage sensitive configuration data (credentials, tokens, passwords,
+ * etc.) in Flink SQL and Table API applications.
+ */
+@PublicEvolving
+public interface SecretStore {}
